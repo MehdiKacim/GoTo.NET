@@ -1,5 +1,4 @@
-﻿// /src/GoToNet.Core/Algorithms/DesignFlowAlgorithm.cs
-using GoToNet.Core.Interfaces;
+﻿using GoToNet.Core.Interfaces;
 using GoToNet.Core.Models;
 using System;
 using System.Collections.Generic;
