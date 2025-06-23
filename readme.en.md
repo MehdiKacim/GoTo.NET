@@ -1,4 +1,5 @@
-﻿# GoTo.NET : Intelligent Navigation Prediction Engine
+![GoTo](./assets/gotologo.png)
+ # GoTo.NET : Intelligent Navigation Prediction Engine
 ---
 
 ## Table of Contents
