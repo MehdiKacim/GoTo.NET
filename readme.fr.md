@@ -1,9 +1,6 @@
 ﻿
 # GoTo.NET : Moteur de Prédiction de Navigation Intelligent
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/votre_repo/GoToNet/actions)
-[![NuGet Version](https://img.shields.io/nuget/v/GoToNet.Core.svg?style=flat-square)](https://www.nuget.org/packages/GoToNet.Core/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
 
