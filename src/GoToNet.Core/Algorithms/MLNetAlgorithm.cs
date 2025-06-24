@@ -14,62 +14,60 @@ using System.Threading.Tasks;
 namespace GoToNet.Core.Algorithms
 {
     /// <summary>
-    /// Implements a prediction algorithm using ML.NET for sophisticated, data-driven predictions.
-    /// It trains a multi-class classification model to predict the next probable page/feature.
+    /// Implémente un algorithme de prédiction utilisant ML.NET pour des prédictions basées sur l'apprentissage automatique.
+    /// Il entraîne un modèle de classification multi-classes pour prédire la prochaine page/fonctionnalité probable.
     /// </summary>
     public class MLNetAlgorithm : IPredictionAlgorithm
     {
         public string Name => "ML.NET";
-        public double Weight { get; set; } = 2.0; // Typically give AI a higher weight due to its complexity
+        public double Weight { get; set; } = 2.0; // Poids typiquement plus élevé pour l'IA
 
         private readonly MLContext _mlContext;
         private ITransformer? _trainedModel;
         private PredictionEngine<NavigationInput, NavigationPrediction>? _predictionEngine;
 
-        // Stores the input schema that the model expects. (Used for model saving/loading).
-        private DataViewSchema? _modelInputSchema; // Holds the *input* schema from Load/Fit
+        // Stocke le schéma d'entrée que le modèle attend. (Utilisé pour la sauvegarde/chargement du modèle).
+        private DataViewSchema? _modelInputSchema; // Contient le schéma *d'entrée* de Load/Fit
 
-        // Used to map ML.NET's internal label indices back to readable page names.
+        // Utilisé pour mapper les indices de label internes de ML.NET aux noms de pages lisibles.
         private IReadOnlyList<KeyValuePair<string, float>>? _slotNames;
 
-        // Path to save/load the trained model. This allows the model to persist across app restarts.
+        // Chemin pour sauvegarder/charger le modèle entraîné.
         private readonly string _modelPath = Path.Combine(AppContext.BaseDirectory, "mlnet_navigation_model.zip");
 
-        // Reference to the catalog of all possible navigation items in the application.
-        // This is crucial for the ML model to predict probabilities for every known destination.
+        // Référence au catalogue de tous les éléments de navigation possibles dans l'application.
         private IAppNavigationCatalog? _appNavigationCatalog;
 
         public MLNetAlgorithm()
         {
-            _mlContext = new MLContext(seed: 0); // Initialize MLContext with a fixed seed for reproducibility
-            LoadModel(); // Try to load an existing model on startup
+            _mlContext = new MLContext(seed: 0); // Initialise MLContext avec une graine fixe pour la reproductibilité
+            LoadModel(); // Tente de charger un modèle existant au démarrage
         }
 
         /// <summary>
-        /// Sets the application's navigation catalog for this algorithm. This allows the algorithm to
-        /// get a complete list of all possible navigation items in the application for prediction purposes.
+        /// Définit le catalogue de navigation de l'application pour cet algorithme.
         /// </summary>
-        /// <param name="catalog">The instance of the application navigation catalog.</param>
+        /// <param name="catalog">L'instance du catalogue de navigation de l'application.</param>
         public void SetAppNavigationCatalog(IAppNavigationCatalog catalog)
         {
             _appNavigationCatalog = catalog;
-            Console.WriteLine("[MLNetAlgorithm] App Navigation Catalog set.");
+            Console.WriteLine("[MLNetAlgorithm] Catalogue de navigation de l'application défini.");
         }
 
 
         /// <inheritdoc />
-        public Task TrainAsync(IEnumerable<NavigationEvent> historicalData, IAlgorithmProgressReporter progressReporter) // Takes progress reporter
+        public Task TrainAsync(IEnumerable<NavigationEvent> historicalData, IAlgorithmProgressReporter progressReporter) // MODIFIED HERE
         {
-            Console.WriteLine("[MLNetAlgorithm] Starting training...");
+            Console.WriteLine("[MLNetAlgorithm] Démarrage de l'entraînement...");
             string algoName = Name;
 
-            progressReporter.ReportProgress(algoName, "Début de la préparation des données", 0); // Report start
+            progressReporter.ReportProgress(algoName, "Début de la préparation des données", 0); // Signale le début
 
-            // 1. Prepare data into ML.NET's expected format (NavigationInput)
+            // 1. Prépare les données au format attendu par ML.NET (NavigationInput)
             var trainingData = PrepareTrainingData(historicalData);
             if (!trainingData.Any())
             {
-                Console.WriteLine("[MLNetAlgorithm] Insufficient data for training. Skipping training.");
+                Console.WriteLine("[MLNetAlgorithm] Données insuffisantes pour l'entraînement. Entraînement ignoré.");
                 _trainedModel = null;
                 _predictionEngine = null;
                 _modelInputSchema = null;
@@ -80,10 +78,10 @@ namespace GoToNet.Core.Algorithms
 
             progressReporter.ReportProgress(algoName, "Chargement des données dans ML.NET", 20);
             var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
-            _modelInputSchema = dataView.Schema; // Store the input schema directly after loading data
+            _modelInputSchema = dataView.Schema; // Stocke le schéma d'entrée directement après le chargement des données
 
             progressReporter.ReportProgress(algoName, "Définition du pipeline d'entraînement", 40);
-            // 2. Define the ML.NET training pipeline
+            // 2. Définit le pipeline d'entraînement ML.NET
             var pipeline = _mlContext.Transforms.Conversion.MapValueToKey("NextPageOrFeature", "NextPageOrFeature")
                 .Append(_mlContext.Transforms.Categorical.OneHotEncoding("UserId"))
                 .Append(_mlContext.Transforms.Categorical.OneHotEncoding("CurrentPageOrFeature"))
@@ -93,26 +91,26 @@ namespace GoToNet.Core.Algorithms
                 .Append(_mlContext.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
 
             progressReporter.ReportProgress(algoName, "Entraînement du modèle", 60);
-            // 3. Train the model
+            // 3. Entraîne le modèle
             _trainedModel = pipeline.Fit(dataView);
 
-            // 4. (Optional) Evaluate the model performance
+            // 4. (Optionnel) Évalue la performance du modèle
             var predictions = _trainedModel.Transform(dataView);
             var metrics = _mlContext.MulticlassClassification.Evaluate(predictions, "NextPageOrFeature");
-            Console.WriteLine($"[MLNetAlgorithm] Model trained. MicroAccuracy: {metrics.MicroAccuracy:P2}");
+            Console.WriteLine($"[MLNetAlgorithm] Modèle entraîné. MicroAccuracy: {metrics.MicroAccuracy:P2}");
 
             progressReporter.ReportProgress(algoName, "Sauvegarde du modèle", 80);
-            // 5. Save the trained model to disk for persistence.
+            // 5. Sauvegarde le modèle entraîné sur le disque pour la persistance.
             SaveModel(_trainedModel, _modelInputSchema);
 
-            // 6. Create a prediction engine for fast predictions at runtime.
+            // 6. Crée un moteur de prédiction pour des prédictions rapides au runtime.
             _predictionEngine = _mlContext.Model.CreatePredictionEngine<NavigationInput, NavigationPrediction>(_trainedModel);
 
-            // 7. Get the mapping of label names from the *output schema* of the prediction engine.
+            // 7. Obtient le mappage des noms de labels à leurs indices internes à partir du schéma de sortie du moteur de prédiction.
             GetSlotNamesFromSchema(_predictionEngine.OutputSchema);
 
             progressReporter.ReportProgress(algoName, "Modèle prêt", 100, true);
-            Console.WriteLine("[MLNetAlgorithm] Training complete and model ready for predictions.");
+            Console.WriteLine("[MLNetAlgorithm] Entraînement terminé et modèle prêt pour les prédictions.");
             return Task.CompletedTask;
         }
 
@@ -125,29 +123,28 @@ namespace GoToNet.Core.Algorithms
         {
             if (_predictionEngine == null || _slotNames == null || string.IsNullOrEmpty(currentContext))
             {
-                Console.WriteLine("[MLNetAlgorithm] Model not trained, slot names missing, or current context is null/empty. Cannot predict.");
+                Console.WriteLine("[MLNetAlgorithm] Modèle non entraîné, noms de slots manquants ou contexte actuel est nul/vide. Impossible de prédire.");
                 return Task.FromResult<IEnumerable<SuggestedItem>>(Enumerable.Empty<SuggestedItem>());
             }
 
             var suggestions = new List<SuggestedItem>();
 
-            // Get all possible destinations from the app catalog.
+            // Pour obtenir les scores pour toutes les destinations possibles, nous utilisons le _appNavigationCatalog.
             IEnumerable<string> allPossibleDestinations = _appNavigationCatalog?.GetAllAvailableNavigationItems() ?? Enumerable.Empty<string>();
 
-            // If the app catalog is empty, fall back to the labels the model was trained on.
+            // Si le catalogue de l'application est vide, on se rabat sur les labels sur lesquels le modèle a été entraîné.
             if (!allPossibleDestinations.Any() && _slotNames != null)
             {
                 allPossibleDestinations = _slotNames.Select(s => s.Key).ToList();
             }
 
-
             if (!allPossibleDestinations.Any())
             {
-                Console.WriteLine("[MLNetAlgorithm] No possible destinations available for prediction from AppNavigationCatalog or model slots.");
+                Console.WriteLine("[MLNetAlgorithm] Aucune destination possible disponible pour la prédiction depuis AppNavigationCatalog ou les slots du modèle.");
                 return Task.FromResult<IEnumerable<SuggestedItem>>(Enumerable.Empty<SuggestedItem>());
             }
 
-            // For each potential next page, create an input and get its prediction score.
+            // Pour chaque page suivante potentielle, crée une entrée et obtient son score de prédiction.
             foreach (var potentialNextPage in allPossibleDestinations)
             {
                 var input = new NavigationInput
@@ -157,13 +154,13 @@ namespace GoToNet.Core.Algorithms
                     PreviousPageOrFeature = contextData != null && contextData.TryGetValue("PreviousPage", out var prevPage) ? prevPage : "NONE",
                     HourOfDay = DateTimeOffset.Now.Hour,
                     DayOfWeek = (float)DateTimeOffset.Now.DayOfWeek,
-                    NextPageOrFeature = potentialNextPage // This is the target label we are scoring for
+                    NextPageOrFeature = potentialNextPage // C'est le label cible que nous cherchons à prédire
                 };
 
                 var prediction = _predictionEngine.Predict(input);
 
-                // Find the index of the 'potentialNextPage' within the model's known labels (_slotNames)
-                // to retrieve its specific probability score.
+                // Trouve l'indice de 'potentialNextPage' parmi les labels connus du modèle (_slotNames)
+                // pour récupérer son score de probabilité spécifique.
                 int labelIndex = -1;
                 for (int i = 0; i < _slotNames.Count; i++)
                 {
@@ -179,34 +176,35 @@ namespace GoToNet.Core.Algorithms
                     suggestions.Add(new SuggestedItem
                     {
                         Name = potentialNextPage,
-                        Score = prediction.Scores[labelIndex] * Weight,
-                        Reason = Name
+                        Score = prediction.Scores[labelIndex] * Weight, // Le score brut de ML.NET, pondéré par l'influence de l'algorithme.
+                        Reason = Name // "ML.NET"
                     });
                 }
             }
 
+            // Trie et prend le nombre de suggestions demandé.
             var finalSuggestions = suggestions
                 .OrderByDescending(s => s.Score)
                 .Take(numberOfSuggestions)
                 .ToList();
 
-            Console.WriteLine($"[MLNetAlgorithm] Predicted {finalSuggestions.Count} items for user '{userId}' (context: {currentContext}).");
+            Console.WriteLine($"[MLNetAlgorithm] A prédit {finalSuggestions.Count} éléments pour l'utilisateur '{userId}' (contexte: {currentContext}).");
             return Task.FromResult<IEnumerable<SuggestedItem>>(finalSuggestions.AsEnumerable());
         }
 
         /// <summary>
-        /// Saves the trained ML.NET model to disk.
+        /// Sauvegarde le modèle ML.NET entraîné sur le disque.
         /// </summary>
-        /// <param name="model">The trained ITransformer model.</param>
-        /// <param name="schema">The input schema used to train the model. This is needed by ML.NET's Save method.</param>
+        /// <param name="model">Le modèle ITransformer entraîné.</param>
+        /// <param name="schema">Le schéma d'entrée utilisé pour entraîner le modèle. Ceci est nécessaire par la méthode Save de ML.NET.</param>
         private void SaveModel(ITransformer model, DataViewSchema schema)
         {
             _mlContext.Model.Save(model, schema, _modelPath);
-            Console.WriteLine($"[MLNetAlgorithm] Model saved to '{_modelPath}'.");
+            Console.WriteLine($"[MLNetAlgorithm] Modèle sauvegardé vers '{_modelPath}'.");
         }
 
         /// <summary>
-        /// Attempts to load an existing ML.NET model from disk.
+        /// Tente de charger un modèle ML.NET existant depuis le disque.
         /// </summary>
         private void LoadModel()
         {
@@ -214,29 +212,29 @@ namespace GoToNet.Core.Algorithms
             {
                 try
                 {
-                    // Load the model. The *input* schema is loaded into _modelInputSchema.
+                    // Charge le modèle. Le schéma *d'entrée* est chargé dans _modelInputSchema.
                     _trainedModel = _mlContext.Model.Load(_modelPath, out _modelInputSchema);
-                    // Create prediction engine from the loaded model
+                    // Crée le moteur de prédiction à partir du modèle chargé.
                     _predictionEngine = _mlContext.Model.CreatePredictionEngine<NavigationInput, NavigationPrediction>(_trainedModel);
 
-                    // Re-establish the slot names (label mapping) from the *output schema* of the prediction engine.
-                    // CRITICAL FIX: Ensure _predictionEngine is not null before accessing its OutputSchema
+                    // Rétablit le mappage des noms de labels (slots) à partir du schéma *de sortie* du moteur de prédiction.
+                    // IMPORTANT: Assurez-vous que _predictionEngine n'est pas nul avant d'accéder à son OutputSchema.
                     if (_predictionEngine != null)
                     {
                         GetSlotNamesFromSchema(_predictionEngine.OutputSchema);
                     }
                     else
                     {
-                        Console.WriteLine("[MLNetAlgorithm] PredictionEngine is null after loading model. Cannot get output schema.");
-                        _slotNames = null; // Ensure slot names are cleared
+                        Console.WriteLine("[MLNetAlgorithm] PredictionEngine est null après le chargement du modèle. Impossible d'obtenir le schéma de sortie.");
+                        _slotNames = null; // S'assurer que les noms de slots sont effacés
                     }
 
 
-                    Console.WriteLine($"[MLNetAlgorithm] Model loaded successfully from '{_modelPath}'.");
+                    Console.WriteLine($"[MLNetAlgorithm] Modèle chargé avec succès depuis '{_modelPath}'.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[MLNetAlgorithm] Error loading model from '{_modelPath}': {ex.Message}. A new model will be trained.");
+                    Console.WriteLine($"[MLNetAlgorithm] Erreur lors du chargement du modèle depuis '{_modelPath}': {ex.Message}. Un nouveau modèle sera entraîné.");
                     _trainedModel = null;
                     _predictionEngine = null;
                     _modelInputSchema = null;
@@ -245,62 +243,62 @@ namespace GoToNet.Core.Algorithms
             }
             else
             {
-                Console.WriteLine($"[MLNetAlgorithm] No existing model file found at '{_modelPath}'. A new model will be trained on startup data.");
+                Console.WriteLine($"[MLNetAlgorithm] Aucun fichier de modèle existant trouvé à '{_modelPath}'. Un nouveau modèle sera entraîné au démarrage.");
             }
         }
 
         /// <summary>
-        /// Extracts and stores the label slot names from the model's output schema.
-        /// These names correspond to the indices in the prediction's 'Scores' array.
+        /// Extrait et stocke les noms de labels (slots) du schéma de sortie du modèle.
+        /// Ces noms correspondent aux indices dans le tableau 'Scores' de la prédiction.
         /// </summary>
-        /// <param name="schema">The DataViewSchema of the model's output (e.g., from PredictionEngine.OutputSchema).</param>
+        /// <param name="schema">Le DataViewSchema du schéma de sortie du modèle (ex: depuis PredictionEngine.OutputSchema).</param>
         private void GetSlotNamesFromSchema(DataViewSchema schema)
         {
-            _slotNames = null; // Reset in case
+            _slotNames = null; // Réinitialise au cas où
 
-            // Use GetColumnOrNull to safely access the "Score" column.
+            // Utilise GetColumnOrNull pour accéder en toute sécurité à la colonne "Score".
             DataViewSchema.Column? scoreColumn = schema.GetColumnOrNull("Score");
 
-            // Check if the column was found and has a value.
+            // Vérifie si la colonne a été trouvée et a une valeur.
             if (scoreColumn.HasValue)
             {
                 VBuffer<ReadOnlyMemory<char>> slotNamesBuffer = default;
-                // Access Annotations property on the DataViewSchema.Column struct's Value
-                // and use GetValue to retrieve the annotation by its well-known name "SlotNames".
+                // Accède à la propriété Annotations sur la structure Value de DataViewSchema.Column
+                // et utilise GetValue pour récupérer l'annotation par son nom bien connu "SlotNames".
                 scoreColumn.Value.Annotations.GetValue("SlotNames", ref slotNamesBuffer);
 
-                // Convert VBuffer<ReadOnlyMemory<char>> to List<KeyValuePair<string, float>>.
-                // GetValues() returns ReadOnlySpan<ReadOnlyMemory<char>>.
-                // Using .ToArray() on the ReadOnlySpan to reliably enable LINQ's Select method.
-                _slotNames = slotNamesBuffer.GetValues().ToArray()
+                // Convertit VBuffer<ReadOnlyMemory<char>> en List<KeyValuePair<string, float>>.
+                // GetValues() retourne ReadOnlySpan<ReadOnlyMemory<char>>.
+                // Utiliser .ToArray() sur ReadOnlySpan pour activer de manière fiable la méthode Select de LINQ.
+                _slotNames = slotNamesBuffer.GetValues().ToArray() 
                                             .Select((s, i) => new KeyValuePair<string, float>(s.ToString(), i))
                                             .ToList();
 
-                Console.WriteLine($"[MLNetAlgorithm] Retrieved {_slotNames.Count} slot names from schema.");
+                Console.WriteLine($"[MLNetAlgorithm] Récupéré {_slotNames.Count} noms de slots à partir du schéma.");
             }
             else
             {
-                Console.WriteLine("[MLNetAlgorithm] 'Score' column not found in schema for slot names annotation.");
+                Console.WriteLine("[MLNetAlgorithm] La colonne 'Score' est introuvable dans le schéma pour l'annotation des noms de slots.");
             }
         }
 
 
         /// <summary>
-        /// Prepares raw NavigationEvent data into a format (NavigationInput) suitable for ML.NET training.
-        /// This creates pairs of (CurrentEvent, NextEvent) where CurrentEvent features predict NextEvent.
+        /// Prépare les données brutes NavigationEvent dans un format (NavigationInput) adapté à l'entraînement ML.NET.
+        /// Cela crée des paires (CurrentEvent, NextEvent) où les caractéristiques de CurrentEvent prédisent NextEvent.
         /// </summary>
         private IEnumerable<NavigationInput> PrepareTrainingData(IEnumerable<NavigationEvent> historicalData)
         {
             var trainingSamples = new List<NavigationInput>();
 
-            // Group events by user and sort them by timestamp to reconstruct sequences.
+            // Regroupe les événements par utilisateur et les trie par timestamp pour reconstruire les séquences.
             var userGroupedHistory = historicalData
                 .GroupBy(e => e.UserId)
                 .Select(g => g.OrderBy(e => e.Timestamp).ToList());
 
             foreach (var userHistory in userGroupedHistory)
             {
-                // We need at least two events to form a (current -> next) sequence.
+                // Nous avons besoin d'au moins deux événements pour former une séquence (courant -> suivant).
                 for (int i = 0; i < userHistory.Count - 1; i++)
                 {
                     var currentEvent = userHistory[i];
@@ -310,14 +308,14 @@ namespace GoToNet.Core.Algorithms
                     {
                         UserId = currentEvent.UserId,
                         CurrentPageOrFeature = currentEvent.CurrentPageOrFeature,
-                        PreviousPageOrFeature = currentEvent.PreviousPageOrFeature ?? "NONE", // Handle null previous page
+                        PreviousPageOrFeature = currentEvent.PreviousPageOrFeature ?? "NONE", // Gère les pages précédentes nulles
                         HourOfDay = currentEvent.Timestamp.Hour,
                         DayOfWeek = (float)currentEvent.Timestamp.DayOfWeek,
-                        NextPageOrFeature = nextEvent.CurrentPageOrFeature // This is the LABEL (what we want to predict)
+                        NextPageOrFeature = nextEvent.CurrentPageOrFeature // Ceci est le LABEL (ce que nous voulons prédire)
                     });
                 }
             }
-            Console.WriteLine($"[MLNetAlgorithm] Prepared {trainingSamples.Count} training samples from historical data.");
+            Console.WriteLine($"[MLNetAlgorithm] Préparé {trainingSamples.Count} échantillons d'entraînement à partir des données historiques.");
             return trainingSamples;
         }
     }

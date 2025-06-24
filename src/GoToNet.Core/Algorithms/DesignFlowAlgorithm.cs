@@ -1,6 +1,7 @@
-﻿using GoToNet.Core.Interfaces;
+﻿// /src/GoToNet.Core/Algorithms/DesignFlowAlgorithm.cs
+using GoToNet.Core.Interfaces;
 using GoToNet.Core.Models;
-using System;
+using System; // For StringComparer
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,13 +13,13 @@ namespace GoToNet.Core.Algorithms
     /// Il suggère des éléments prédéfinis qui sont logiquement pertinents pour un contexte donné,
     /// en s'appuyant sur un fournisseur de règles configurable.
     /// </summary>
-    public class DesignFlowAlgorithm : IDesignFlowAlgorithm // MODIFIÉ : Implémente la nouvelle interface
+    public class DesignFlowAlgorithm : IDesignFlowAlgorithm // Implémente la nouvelle interface
     {
         public string Name => "DesignFlow";
         public double Weight { get; set; } = 0.7; // Poids par défaut
 
-        private readonly IDesignFlowRulesProvider _rulesProvider;
-        private IReadOnlyDictionary<string, List<string>>? _applicationDesignFlows;
+        private readonly IDesignFlowRulesProvider _rulesProvider; // Dépendance au fournisseur de règles
+        private IReadOnlyDictionary<string, List<string>>? _applicationDesignFlows; // Les règles chargées
 
         /// <summary>
         /// Initialise une nouvelle instance du <see cref="DesignFlowAlgorithm"/>.
@@ -30,15 +31,16 @@ namespace GoToNet.Core.Algorithms
         }
 
         /// <inheritdoc />
-        public async Task TrainAsync(IEnumerable<NavigationEvent> historicalData, IAlgorithmProgressReporter progressReporter)
+        public async Task TrainAsync(IEnumerable<NavigationEvent> historicalData, IAlgorithmProgressReporter progressReporter) // MODIFIED HERE
         {
             string algoName = Name;
-            progressReporter.ReportProgress(algoName, "Démarrage du chargement des règles de conception", 0);
+            progressReporter.ReportProgress(algoName, "Démarrage du chargement des règles de conception", 0); // Signale le début
 
+            // Charger les règles via le fournisseur
             _applicationDesignFlows = await _rulesProvider.GetDesignFlowRulesAsync();
 
-            Console.WriteLine($"[DesignFlowAlgorithm] Training complete (loaded {_applicationDesignFlows.Count} design flow rules).");
-            progressReporter.ReportProgress(algoName, "Règles de conception chargées", 100, true, $"Chargé {_applicationDesignFlows.Count} règles.");
+            Console.WriteLine($"[DesignFlowAlgorithm] Entraînement terminé (chargé {_applicationDesignFlows.Count} règles de flux de conception).");
+            progressReporter.ReportProgress(algoName, "Règles de conception chargées", 100, true, $"Chargé {_applicationDesignFlows.Count} règles."); // Signale la fin
         }
 
         /// <inheritdoc />
@@ -48,6 +50,7 @@ namespace GoToNet.Core.Algorithms
             int numberOfSuggestions,
             IDictionary<string, string>? contextData = null)
         {
+            // S'assurer que les règles ont été chargées via TrainAsync
             if (_applicationDesignFlows == null || string.IsNullOrEmpty(currentContext))
             {
                 Console.WriteLine("[DesignFlowAlgorithm] Règles de conception non chargées ou contexte manquant.");
@@ -56,6 +59,7 @@ namespace GoToNet.Core.Algorithms
 
             var suggestions = new List<SuggestedItem>();
 
+            // Vérifie si des flux de conception sont définis pour le contexte actuel
             if (_applicationDesignFlows.TryGetValue(currentContext, out var designRelatedItems))
             {
                 foreach (var item in designRelatedItems)
@@ -63,13 +67,13 @@ namespace GoToNet.Core.Algorithms
                     suggestions.Add(new SuggestedItem
                     {
                         Name = item,
-                        Score = 1.0 * Weight,
+                        Score = 1.0 * Weight, // Score fixe, peut être ajusté ou rendre configurable par item
                         Reason = Name
                     });
                 }
             }
 
-            Console.WriteLine($"[DesignFlowAlgorithm] Predicted {suggestions.Count} items for context '{currentContext}'.");
+            Console.WriteLine($"[DesignFlowAlgorithm] A prédit {suggestions.Count} éléments pour le contexte '{currentContext}'.");
             return Task.FromResult<IEnumerable<SuggestedItem>>(suggestions.AsEnumerable());
         }
     }

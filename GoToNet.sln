@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A760CF41-8A6
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoToNet.Core", "src\GoToNet.Core\GoToNet.Core.csproj", "{0420938C-63E2-4374-A5B5-CE88A69B563A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoToNet.WPF", "src\GoToNet.WPF\GoToNet.WPF.csproj", "{66390551-E270-481D-9FA1-C9E43559DD71}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,8 +19,13 @@ Global
 		{0420938C-63E2-4374-A5B5-CE88A69B563A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0420938C-63E2-4374-A5B5-CE88A69B563A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0420938C-63E2-4374-A5B5-CE88A69B563A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66390551-E270-481D-9FA1-C9E43559DD71}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66390551-E270-481D-9FA1-C9E43559DD71}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66390551-E270-481D-9FA1-C9E43559DD71}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66390551-E270-481D-9FA1-C9E43559DD71}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0420938C-63E2-4374-A5B5-CE88A69B563A} = {A760CF41-8A6F-449F-A0B0-94FA06F758E1}
+		{66390551-E270-481D-9FA1-C9E43559DD71} = {A760CF41-8A6F-449F-A0B0-94FA06F758E1}
 	EndGlobalSection
 EndGlobal

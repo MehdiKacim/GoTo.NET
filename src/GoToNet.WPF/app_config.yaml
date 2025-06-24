@@ -1,0 +1,92 @@
+﻿# /src/GoToNet.WpfDemo/config/app_config.yaml
+# Configuration globale pour GoTo.NET
+
+# Section AppPages: Liste exhaustive de toutes les pages/fonctionnalités disponibles dans l'application.
+# C'est la source de vérité pour le catalogue de navigation (IAppNavigationCatalog).
+AppPages:
+  - Dashboard
+  - ProjectManagement
+  - UserProfiles
+  - Settings
+  - Home
+  - ProjectManagement/CreateNew
+  - ProjectManagement/ViewAll
+  - ProjectManagement/Search
+  - ProjectManagement/EditDetails
+  - ProjectManagement/Delete
+  - Reporting/Financial
+  - Analytics/UserBehavior
+  - Support/Tickets
+  - Metrics
+  - Logs
+  - Alerts
+  - Deployments
+  - Pipelines
+  - Environments
+  - Source Code
+  - Builds
+  - Profile
+  - Invoices
+  - Payments
+  - Pay Invoice
+  - Mon Tableau de Bord Perso
+  - Dernier Rapport d'Erreurs
+  - Contacts Cles
+  - Prochain Sprint
+  - Vue d'ensemble rapide
+  - Alertes importantes
+  - Parametres du tableau de bord
+  - Creer un nouveau projet
+  - Voir tous les projets
+  - Gerer les equipes
+  - Ajouter un utilisateur
+  - Gerer les roles
+  - Ajouter une nouvelle tache
+  - Voir mes taches
+  - Filtres de taches avances
+  - Payer une facture
+  - Telecharger la facture PDF
+  - Historique des paiements
+  - Profil utilisateur
+  - Changer le mot de passe
+  - Parametres de notification
+  - Getting Started
+
+# Section DesignFlows: Définit les règles de flux de conception de l'application.
+# Ces règles sont utilisées par DesignFlowAlgorithm pour suggérer des actions logiques.
+# Elles référencent les pages listées dans AppPages.
+DesignFlows:
+  - SourcePage: Dashboard
+    TargetPages:
+      - Vue d'ensemble rapide
+      - Alertes importantes
+      - ProjectManagement
+  - SourcePage: ProjectManagement
+    TargetPages:
+      - ProjectManagement/CreateNew
+      - ProjectManagement/ViewAll
+      - Gerer les equipes
+      - Dashboard # Retour vers le tableau de bord depuis la gestion de projets
+  - SourcePage: UserProfiles
+    TargetPages:
+      - Ajouter un utilisateur
+      - Gerer les roles
+      - ProjectManagement # Un flux peut amener l'utilisateur vers une page non directement liée à son contexte
+  - SourcePage: Invoices
+    TargetPages:
+      - Payer une facture
+      - Telecharger la facture PDF
+      - Historique des paiements
+  - SourcePage: Getting Started
+    TargetPages:
+      - Creer un compte
+      - Voir le tutoriel
+
+# Section MainNavigationItems: Définit les éléments du menu de navigation principal de l'UI.
+# Ces noms doivent correspondre aux noms de pages listés dans AppPages.
+MainNavigationItems:
+  - Dashboard
+  - ProjectManagement
+  - UserProfiles
+  - Settings
+  - Home
